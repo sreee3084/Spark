@@ -2672,8 +2672,308 @@ sqoop job --create sqoop_job -- import --connect jdbc:mysql://quickstart/retail_
 --target-dir categories_targetJob 
 
 ----
-
 Q88:
+
+Problem Scenario 11 : You have been given following mysql database details as well as
+other info.
+user=retail_dba
+password=cloudera
+database=retail_db
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db
+Please accomplish following.
+1. Import departments table in a directory called departments.
+2. Once import is done, please insert following 5 records in departments mysql table.
+Insert into departments(10, physics);
+Insert into departments(11, Chemistry);
+Insert into departments(12, Maths);
+Insert into departments(13, Science);
+Insert into departments(14, Engineering);
+3. Now import only new inserted records and append to existring directory . which has been
+created in first step.
+
+
+******
+sqoop import --connect jdbc:mysql://quickstart/retail_db \
+--username retail_dba \
+--password cloudera \
+--table departments \
+--target-dir /user/cloudera/departments \
+-m 1
+
+
+
+Insert into departments(10, physics);
+Insert into departments(11, Chemistry);
+Insert into departments(12, Maths);
+Insert into departments(13, Science);
+Insert into departments(14, Engineering);
+
+
+sqoop import --connect jdbc:mysql://quickstart/retail_db \
+--username retail_dba \
+--password cloudera \
+--table departments \
+--increamental append \
+--target-dir /user/cloudera/departments \
+--check-column department_id \
+--last-value 7
+
+
+------
+
+Q89:
+Problem Scenario 29 : Please accomplish the following exercises using HDFS command
+line options.
+1. Create a directory in hdfs named hdfs_commands.
+2. Create a file in hdfs named data.txt in hdfs_commands.
+3. Now copy this data.txt file on local filesystem, however while copying file please make
+sure file properties are not changed e.g. file permissions.
+4. Now create a file in local directory named data_local.txt and move this file to hdfs in
+hdfs_commands directory.
+5. Create a file data_hdfs.txt in hdfs_commands directory and copy it to local file system.
+6. Create a file in local filesystem named file1.txt and put it to hdfs
+
+
+********
+
+hdfs dfs -mkdir hdfs_commands 
+
+hdfs dfs -touchz hdfs_commands/data.txt
+
+hdfs dfs -get hdfs_commands/data.txt /home/cloudera/Q89
+
+
+touch data_local.txt
+
+hdfs dfs -put data_local.txt hdfs_commands/
+
+hdfs dfs -touchz hdfs_commands/data_hdfs.txt
+
+hdfs dfs -get hdfs_commands/data_hdfs.txt /home/cloudera/Q89
+
+touch file1.txt
+
+hdfs dfs -put file1.txt  hdfs_commands/
+
+
+
+
+-------
+
+Q90:
+
+Problem Scenario 75 : You have been given MySQL DB with following details.
+user=retail_dba
+password=cloudera
+database=retail_db
+table=retail_db.orders
+table=retail_db.order_items
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db
+Please accomplish following activities.
+1. Copy "retail_db.order_items" table to hdfs in respective directory p90_order_items .
+2. Do the summation of entire revenue in this table using pyspark.
+3. Find the maximum and minimum revenue as well.
+4. Calculate average revenue
+Columns of ordeMtems table : (order_item_id , order_item_order_id ,
+order_item_product_id, order_item_quantity,order_item_subtotal,order_
+item_subtotal,order_item_product_price)
+
+******
+
+
+sqoop import --connect jdbc:mysql://quickstart/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--tagert-dir /user/cloudera/practice/Q90 \
+-m 1
+
+
+entireTableRDD = sc.textFile("/user/cloudera/practice/Q90")
+extractedRevenueColumn = entireTableRDD.map(lambda line: float(line.split(",")[4]))
+totalRevenue = extractedRevenueColumn.reduce(lambda a, b: a + b)
+maximumRevenue = extractedRevenueColumn.reduce(lambda a, b: (a if a>=b else b))
+minimumRevenue = extractedRevenueColumn.reduce(lambda a, b: (a if a<=b else b))
+count=extractedRevenueColumn.count()
+averageRev=totalRevenue/count
+
+
+----
+Q91:
+
+Problem Scenario 82 : You have been given table in Hive with following structure (Which
+you have created in previous exercise).
+productid int code string name string quantity int price float
+Using SparkSQL accomplish following activities.
+1. Select all the products name and quantity having quantity <= 2000
+2. Select name and price of the product having code as 'PEN'
+3. Select all the products, which name starts with PENCIL
+4. Select all products which "name" begins with P\ followed by any two characters,
+followed by space, followed by zero or more characters
+
+
+****
+
+val products=sc.textFile("/user/cloudera/practice/Q91/product")
+val pdf=products.map(p=>(p.split(",")(0).toInt,p.split(",")(1),p.split(",")(2),p.split(",")(3).toInt,p.split(",")(4).toDouble,p.split(",")(5).toInt)).toDF("pid","code","name","quan","price","sid")
+pdf.registerTempTable("products")
+
+
+val res1=sqlContext.sql("select name from products where quan<= 2000")
+val res2=sqlContext.sql("select name,price from products where code= 'PEN'")
+val res3=sqlContext.sql("select name,price from products where name like 'PENCIL%'")
+val res4=sqlContext.sql("select name,price from products where name like 'P_%'")
+
+
+----
+Q92:
+
+Problem Scenario 26 : You need to implement near real time solutions for collecting
+information when submitted in file with below information. You have been given below
+directory location (if not available than create it) /tmp/nrtcontent. Assume your departments
+upstream service is continuously committing data in this directory as a new file (not stream
+of data, because it is near real time solution). As soon as file committed in this directory
+that needs to be available in hdfs in /tmp/flume location
+Data
+echo "I am preparing for CCA175 from ABCTECH.com" > /tmp/nrtcontent/.he1.txt
+mv /tmp/nrtcontent/.he1.txt /tmp/nrtcontent/he1.txt
+After few mins
+echo "I am preparing for CCA175 from TopTech.com" > /tmp/nrtcontent/.qt1.txt
+mv /tmp/nrtcontent/.qt1.txt /tmp/nrtcontent/qt1.txt
+Write a flume configuration file named flumes.conf and use it to load data in hdfs with
+following additional properties.
+1. Spool /tmp/nrtcontent
+2. File prefix in hdfs sholuld be events
+3. File suffix should be Jog
+4. If file is not commited and in use than it should have as prefix.
+5. Data should be written as text to hdfs
+
+
+
+****
+flume
+
+
+
+------
+
+Q93:
+
+Problem Scenario 36 : You have been given a file named spark8/data.csv (type,name).
+data.csv
+1,Lokesh
+2,Bhupesh
+2,Amit
+2,Ratan
+2,Dinesh
+1,Pavan
+1,Tejas
+2,Sheela
+1,Kumar
+1,Venkat
+1. Load this file from hdfs and save it back as (id, (all names of same type)) in results
+directory. However, make sure while saving it should be
+
+*******
+
+val name=sc.textFile("/user/ssettipalli/practice/Q93")
+val namePairRDD = name.map(x=> (x.split(",")(0),x.split(",")(1))) 
+val swapped = namePairRDD.map(item => item.swap) 
+val combinedOutput = namePairRDD.combineByKey(List(_), (x:List[String], y:String) => y :: x, (x:List[String], y:List[String]) => x ::: y) 
+combinedOutput.repartition(1).saveAsTextFile("/user/ssettipalli/practice/Q93/result.txt")
+
+
+or 
+val name=sc.textFile("/user/ssettipalli/practice/Q93")
+val namePairRDD = name.map(x=> (x.split(",")(0),x.split(",")(1))) 	
+val gp=namePairRDD.groupByKey
+val re=gp.map(p=>(p._1,p._2.toList.sorted))
+re.repartition(1).saveAsTextFile("/user/ssettipalli/practice/Q93/result1.txt")
+
+---
+Q94:
+Problem Scenario 78 : You have been given MySQL DB with following details.
+user=retail_dba
+password=cloudera
+database=retail_db
+table=retail_db.orders
+table=retail_db.order_items
+jdbc URL = jdbc:mysql://quickstart:3306/retail_db
+Columns of order table : (orderid , order_date , order_customer_id, order_status)
+Columns of ordeMtems table : (order_item_td , order_item_order_id ,
+order_item_product_id,
+order_item_quantity,order_item_subtotal,order_item_product_price)
+Please accomplish following activities.
+1. Copy "retail_db.orders" and "retail_db.order_items" table to hdfs in respective directory
+p92_orders and p92_order_items .
+2. Join these data using order_id in Spark and Python
+3. Calculate total revenue perday and per customer
+4. Calculate maximum revenue customer
+
+*********
+
+sqoop import --connect jdbc:mysql://quickstart/retail_db \
+--username retail_dba \
+--password cloudera \
+--table orders \
+--target-dir /user/cloudera/practice/Q94_orders \
+-m 1 
+
+
+sqoop import --connect jdbc:mysql://quickstart/retail_db \
+--username retail_dba \
+--password cloudera \
+--table order_items \
+--target-dir /user/cloudera/practice/Q94_order_items \
+-m 1 
+
+
+
+orders=sc.textFile("/user/cloudera/practice/Q94_orders")
+
+order_items=sc.textFile("/user/cloudera/practice/Q94_order_items")
+
+orderdf=orders.map(lamda x:(x.split(",")[0],x.split(",")[1],x.split(",")[2],x.split(",")[3])).toDF("od","odate","ocid","os")
+orderdf.registerTempTable("orders")
+orderitemsdf=order_items.map(lamda x:(x.split(",")[0],x.split(",")[1],x.split(",")[2],x.split(",")[3],x.split(",")[4],x.split(",")[5])).toDF("oid","oitod","pid","quan","subtotal","price")
+orderitemsdf.registerTempTable("order_items")
+
+
+
+-----
+Q95:
+
+Problem Scenario 59 : You have been given below code snippet.
+val x = sc.parallelize(1 to 20)
+val y = sc.parallelize(10 to 30) operationl
+z.collect
+Write a correct code snippet for operationl which will produce desired output, shown below.
+Array[lnt] = Array(16,12, 20,13,17,14,18,10,19,15,11)
+
+
+***
+
+val x = sc.parallelize(1 to 20)
+val y = sc.parallelize(10 to 30)
+val z = x.intersection(y)
+
+
+----
+Q96:
+
+Problem Scenario 62 : You have been given below code snippet.
+val a = sc.parallelize(List("dog", "tiger", "lion", "cat", "panther", "eagle"), 2)
+val b = a.map(x => (x.length, x))
+operation1
+Write a correct code snippet for operationl which will produce desired output, shown below.
+Array[(lnt, String)] = Array((3,xdogx), (5,xtigerx), (4,xlionx), (3,xcatx), (7,xpantherx),
+(5,xeaglex))
+
+
+***
+
+b.mapValues("x"+_+"x").collect
+
 
 
 
