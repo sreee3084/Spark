@@ -1,5 +1,71 @@
 
 
+
+
+CREATE TABLE #summary (proider_id bigint, speciality VARCHAR(100))
+INSERT INTO #summary (proider_id, speciality)
+
+
+select '12345','LAc'
+union all
+select '12345','DC'
+union all
+select '12345','XYZ'
+union all
+select '12345','DC'
+union all
+select '55555','LAc'
+union all
+select '55555','LAc'
+union all
+select '55555','LAc'
+union all
+select '55555','XYZ'
+union all
+select '456789','F2Y'
+union all
+select '456789','72Y'
+
+
+
+
+
+
+
+select 
+proider_id,abc,case when abc like '%DC|%' then 'DC'
+							when abc like '%Lac|%' then 'LAc'
+							else substring(abc,1,CHARINDEX('|',abc)-1)  end as sp1,
+
+							case when abc like '%LAc|%' and abc  like '%DC|%' then 'LAc'
+								else 
+								case when (CHARINDEX('|',abc,(charindex('|',abc)+1)))=0 then substring(abc,CHARINDEX('|',abc)+1,10)
+									else substring(abc,CHARINDEX('|',abc)+1,(CHARINDEX('|',abc,(charindex('|',abc)+1))))
+									end 
+								  end as sp2
+into #specl
+ from 
+
+		 (select proider_id,abc=STUFF(( select '|'+speciality 
+
+		 from (select distinct proider_id,speciality from #summary) t1 where (t1.proider_id=t2.proider_id) FOR XML PATH('')),1,1,'') 
+
+		 from (select distinct proider_id,speciality from #summary) t2
+
+		 group by proider_id) x
+
+
+		 select * from #specl
+
+
+		 select s1.proider_id,sp1,sp2 from 
+
+		 #summary s1 join #specl s2
+		 on 
+		 s1.proider_id=s2.proider_id
+
+
+
 prob1:
 
 sqoop import --connect jdbc:mysql://quickstart/retail_db --username root --password cloudera --table orders --target-dir /user/cloudera/problem1/orders -z --compression-codec snappy --as-avrodatafile
